@@ -1,5 +1,5 @@
 body {
-    background-color: #778899;
+    background-color: #90909c;
 }
 
 .no-display {
@@ -14,16 +14,32 @@ body {
 }
 
 .title {
-    font-size: 30px;
+    font-size: 40px;
     margin-top: 1em;
     margin-bottom: 1em;
     color: #fff;
     font-family: times, serif;
+    font-style:italic, bolder;
+}
+
+.text {
+    color: #fff;
+    font-family: times, serif;
     font-style:italic;
+    font-size: 20px;
+}
+
+.description {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .content {
     margin-top: 10em;
+    margin-left: 20px;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .analyze {
@@ -41,33 +57,37 @@ body {
     font-size: 13px;
 }
 
-button.choose-file-button {
+.choose-file-button {
     width: 200px;
     height: 40px;
     border-radius: 6px;
-    background-color: none;
+    background-color: #163553;
     border: solid 1px black;
     font-size: 13px;
-    color: black;
+    color: white;
+    cursor: pointer;
 }
-
-button.analyze-button {
-    width: 200px;
-    height: 40px;
-    border: solid 1px black;
-    border-radius: 6px;
-    background-color: none;
-    font-size: 13px;
-    color: black;
-}
-
-button .analyze-button :hover {
+.choose-file-button:hover {
     border: solid 1px #0d0053;
-    background-color: #12026e;
+    background-color: #303031;
     font-size: 13px;
+    color: #fff;
+    transition: 2ms;
+}
+
+.analyze .analyze-button {
+    width: 200px;
+    height: 40px;
+    border: solid 1px black;
+    border-radius: 6px;
+    background-color: transparent;
+    font-size: 13px;
+    cursor: pointer;
+    color: black;
+}
+
+.analyze .analyze-button:hover {
+    background-color: #303031;
     color: #fff;
 }
 
-button:focus {
-    outline: 0;
-}
