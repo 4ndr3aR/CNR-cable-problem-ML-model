@@ -1,5 +1,5 @@
 body {
-    background-color: #90909c;
+    background-color: #90909c; /*COR DO SITE*/
 }
 
 .no-display {
@@ -13,16 +13,16 @@ body {
     font-size: 14px;
 }
 
-.title {
-    font-size: 40px;
+.title {    /* CARACTERISTICA DO TITULO*/
+    font-size: 40px; /*TAMANHO*/
     margin-top: 1em;
     margin-bottom: 1em;
-    color: #fff;
-    font-family: times, serif;
-    font-style:italic, bolder;
+    color: #fff; /*COR DO FONTE*/
+    font-family: times, serif; /*TIPO DE FONTE*/
+    font-style:italic, bolder; /*ESTILO DA FONTE*/
 }
 
-.text {
+.text { /*CARACTERISTICAS DA DESCRIÇAO DO APP*/
     color: #fff;
     font-family: times, serif;
     font-style:italic;
@@ -37,7 +37,6 @@ body {
 
 .content {
     margin-top: 10em;
-    margin-left: 100px;
     display: flex;
     justify-content: space-around;
     align-items: baseline;
@@ -51,18 +50,18 @@ body {
     padding: 10px;
     font-size: 14px;
     color: #fff;
-    border: solid 1px black;
+    border: black;
 }
 
-.result-label {
+.result-label { /*CARACTERISCAS DO RESULTADO*/
     margin-top: 0.5em;
     padding: 10px;
     font-size: 16px;
     color: #fff;
-    border: solid 1px black;
+    border: black;
 }
 
-.choose-file-button {
+.choose-file-button { /*CARACTERISCAS DO BOTAO DE SELECIONAR*/
     width: 200px;
     height: 40px;
     border-radius: 6px;
@@ -80,7 +79,7 @@ body {
     transition: 2ms;
 }
 
-.analyze .analyze-button {
+.analyze .analyze-button { /*CARACTERISCAS DO ANALISAR*/
     width: 200px;
     height: 40px;
     border: solid 1px black;
