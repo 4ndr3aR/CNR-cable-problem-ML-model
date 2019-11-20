@@ -38,23 +38,27 @@ body {
 .content {
     margin-top: 10em;
     margin-left: 20px;
-    justify-content: space-between;
-    align-items: center;
+    display: flex;
+    justify-content: center;
+    align-items: baseline;
 }
 
 .analyze {
     margin-top: 5em;
+    margin-left: 30px;
 }
 
 .upload-label {
     padding: 10px;
-    font-size: 12px;
+    font-size: 14px;
+    color: #fff;
 }
 
 .result-label {
     margin-top: 0.5em;
     padding: 10px;
-    font-size: 13px;
+    font-size: 16px;
+    color: #fff;
 }
 
 .choose-file-button {
