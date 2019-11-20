@@ -31,7 +31,7 @@ body {
 
 .description {
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
     align-items: center;
 }
 
@@ -39,7 +39,7 @@ body {
     margin-top: 10em;
     margin-left: 100px;
     display: flex;
-    justify-content: center;
+    justify-content: space-around;
     align-items: baseline;
 }
 
