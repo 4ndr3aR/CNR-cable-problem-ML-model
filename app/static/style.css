@@ -37,7 +37,7 @@ body {
 
 .content {
     margin-top: 10em;
-    margin-left: 20px;
+    margin-left: 100px;
     display: flex;
     justify-content: center;
     align-items: baseline;
