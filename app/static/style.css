@@ -1,97 +1,136 @@
+@font-face{
+    font-family: "Roboto";
+    src: url("Roboto-MediumItalic.ttf");
+  }
+
 body {
-    background-color: #90909c; /*COR DO SITE*/
+    background-color: #310a5d;
+    margin: 0;
+    padding: 0;
+}
+
+.all{
+    background-color: #dbd8e3;
 }
 
 .no-display {
     display: none;
 }
 
-.center {
-    margin: auto;
-    padding: 10px 50px;
+
+.header {
+    text-align: start;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    padding: 20px;
+}
+
+.info {
+    margin-left: 40px;
+    margin-right: 20px;
+    font-size: 16px;
+    color: #310a5d;
+    margin-right: 30px;
+    font-family: "serif","times";
+    font-style: bold, italic;
+}
+
+.title {
+    font-size: 30px;
+    color: #310a5d;
+    margin-left: 30px;
+    font-family: "Roboto";
+    font-style: bold;
+}
+
+.text {
+    color: #310a5d;
+    font-family: 'Roboto';
+    margin: 50px;
     text-align: center;
-    font-size: 14px;
-}
-
-.title {    /* CARACTERISTICA DO TITULO*/
-    font-size: 40px; /*TAMANHO*/
-    margin-top: 1em;
-    margin-bottom: 1em;
-    color: #fff; /*COR DO FONTE*/
-    font-family: times, serif; /*TIPO DE FONTE*/
-    font-style:italic, bolder; /*ESTILO DA FONTE*/
-}
-
-.text { /*CARACTERISTICAS DA DESCRIÇAO DO APP*/
-    color: #fff;
-    font-family: times, serif;
-    font-style:italic;
     font-size: 20px;
 }
 
-.description {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
 .content {
-    margin-top: 10em;
     display: flex;
     justify-content: space-around;
     align-items: baseline;
+    margin: 20px;
+    padding-bottom: 100px;
+}
+
+.select {
+    padding: 50px;
+    padding-top: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .analyze {
     margin-top: 5em;
+    margin-left: 100px;
 }
 
 .upload-label {
     padding: 10px;
     font-size: 14px;
-    color: #fff;
-    border: black;
+    color: #310a5d;
+    border: #310a5d;
 }
 
-.result-label { /*CARACTERISCAS DO RESULTADO*/
+.result-label {
     margin-top: 0.5em;
     padding: 10px;
     font-size: 16px;
-    color: #fff;
-    border: black;
+    border: #310a5d;
+    color: #310a5d;
 }
 
-.choose-file-button { /*CARACTERISCAS DO BOTAO DE SELECIONAR*/
+.choose-file-button {
     width: 200px;
     height: 40px;
     border-radius: 6px;
-    background-color: #163553;
-    border: solid 1px black;
+    background-color: transparent;
+    border: solid 1px #310a5d;
     font-size: 13px;
-    color: white;
+    color: #310a5d;
     cursor: pointer;
 }
 .choose-file-button:hover {
-    border: solid 1px #0d0053;
-    background-color: #303031;
-    font-size: 13px;
-    color: #fff;
-    transition: 2ms;
+    border: solid 1px #dbd8e3;
+    background-color: #310a5d;
+    color: #dbd8e3;
+    transition: all 0.3s;
 }
 
-.analyze .analyze-button { /*CARACTERISCAS DO ANALISAR*/
+.analyze .analyze-button {
     width: 200px;
     height: 40px;
-    border: solid 1px black;
+    border: solid 1px #310a5d;
     border-radius: 6px;
     background-color: transparent;
     font-size: 13px;
     cursor: pointer;
-    color: black;
+    color: #310a5d;
 }
 
 .analyze .analyze-button:hover {
-    background-color: #303031;
-    color: #fff;
+    border: solid 1px #dbd8e3;
+    background-color: #310a5d;
+    color: #dbd8e3;
+    transition: all 0.3s;
 }
 
+.more {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    margin: 20px;
+    font-family: 'Roboto';
+    font-size: 16px;
+    color: #dbd8e3;
+}
