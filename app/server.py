@@ -1,18 +1,46 @@
+#!/usr/bin/env python
+
+import sys
+import numpy as np
+import pandas as pd
+
+import torch
 import aiohttp
 import asyncio
 import uvicorn
 from fastai import *
-from fastai.vision import *
+#from fastai.vision import *
+from fastai.tabular import *
+from fastai.tabular.learner import TabularLearner
+from fastai.learner import load_learner
+from pathlib import Path
 from io import BytesIO
+from io import StringIO
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-export_file_url = '<Your file url here>'
-export_file_name = '<Your filename here>'
+from flask import Flask, request
+from flask_debugtoolbar import DebugToolbarExtension
+import logging
 
-classes = ['<Your classes here>']
+from wwf.tab.export import *
+
+import ditac_kistlerfile_reader
+from ditac_kistlerfile_reader import KistlerFile
+from ditac_kistlerfile_reader import create_inference_ready_sample
+
+export_file_url  = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pt'
+export_to_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
+export_df_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-df.csv'
+export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
+export_file_name = 'ditac-cable-problem-v0.6-endoftraining.pt'
+export_to_name   = 'ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
+export_df_name   = 'ditac-cable-problem-v0.6-endoftraining-df.csv'
+export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
+
+classes = [False, True]
 path = Path(__file__).parent
 
 app = Starlette()
@@ -30,17 +58,38 @@ async def download_file(url, dest):
 
 
 async def setup_learner():
-    await download_file(export_file_url, path / export_file_name)
-    try:
-        learn = load_learner(path, export_file_name)
-        return learn
-    except RuntimeError as e:
-        if len(e.args) > 0 and 'CPU-only machine' in e.args[0]:
-            print(e)
-            message = "\n\nThis model was trained with an old version of fastai and will not work in a CPU environment.\n\nPlease update the fastai library in your training environment and export your model again.\n\nSee instructions for 'Returning to work' at https://course.fast.ai."
-            raise RuntimeError(message)
-        else:
-            raise
+	await download_file(export_file_url, path / export_file_name)
+	await download_file(export_to_url, path / export_to_name)
+	await download_file(export_df_url, path / export_df_name)
+	await download_file(export_pkl_url, path / export_pkl_name)
+	try:
+		'''
+		to      = load_pandas(path / export_to_name)
+		print(f'{to = }')
+
+		df = pd.read_csv(path / export_df_name).T
+		df = df.astype({col: np.float16 for col in df.columns[:-1]})
+		df = df.convert_dtypes()
+		to_new = to.train.new(df)
+		print(f'{to_new = }')
+		to_new.process()
+		dls_new = to_new.dataloaders(bs=8)
+
+		model   = torch.load(f'{path}/{export_file_name}')
+		print(f'{model = }')
+		learn   = TabularLearner(dls_new, model, to.loss_func)
+		'''
+		learn = load_learner(path / export_pkl_name)
+		print(f'{learn = }')
+		#learn = load_learner(path, export_file_name)
+		return learn
+	except RuntimeError as e:
+		if len(e.args) > 0 and 'CPU-only machine' in e.args[0]:
+			print(e)
+			message = "\n\nThis model was trained with an old version of fastai and will not work in a CPU environment.\n\nPlease update the fastai library in your training environment and export your model again.\n\nSee instructions for 'Returning to work' at https://course.fast.ai."
+			raise RuntimeError(message)
+		else:
+			raise
 
 
 loop = asyncio.get_event_loop()
@@ -48,22 +97,90 @@ tasks = [asyncio.ensure_future(setup_learner())]
 learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
 loop.close()
 
-
+# --------------------------------------------------
+# ====================== HTML ======================
+# --------------------------------------------------
 @app.route('/')
 async def homepage(request):
     html_file = path / 'view' / 'index.html'
     return HTMLResponse(html_file.open().read())
 
-
 @app.route('/analyze', methods=['POST'])
 async def analyze(request):
-    img_data = await request.form()
-    img_bytes = await (img_data['file'].read())
-    img = open_image(BytesIO(img_bytes))
-    prediction = learn.predict(img)[0]
-    return JSONResponse({'result': str(prediction)})
+	form_data = await request.form()
+	#img_bytes = await (img_data['file'].read())
+	#img = open_image(BytesIO(img_bytes))
+	#prediction = learn.predict(img)[0]
+	starlette_data = await(form_data['file'].read())
+	#print(f'{fname = }')
+	#csvdata = BytesIO(starlette_data)
+	csvdata = StringIO(str(starlette_data.decode("utf-8")))
+	#print(f'{csvdata.readlines() = }')
+	debug = False
+	if debug:
+		df = pd.read_csv(csvdata, skiprows=KistlerFile.kistler_dataframe_line_offset, sep=';', decimal=',')
+		print(f'{df = }')
+	kf = KistlerFile(fname=csvdata,debug=False)		# let's see if this trick works...
+	if debug:
+		prediction = kf.df
+
+	KistlerFile._kf_max_time = 3.9999			# this is mandatory and hardcoded to obtain (exactly) 800 samples after resampling. ML model expects 800 columns.
+	kf.resample(debug=False)
+
+	sample = create_inference_ready_sample(kf, debug=False)
+	row, clas, probs = learn.predict(sample)
+	#row.show()
+	#probs
+
+	return JSONResponse({'result': str(classes[int(clas)]) + ' -> ' + str(probs)})
+# --------------------------------------------------
+# ==================================================
+# --------------------------------------------------
+
+# --------------------------------------------------
+# ====================== POST ======================
+# --------------------------------------------------
+@app.route('/debug')
+def index():
+    logging.warning("See this message in Flask Debug Toolbar!")
+    return "<html><body>it works, now try a post request...</body></html>"
+
+@app.route('/post', methods=['POST'])
+def result():
+	print(request.form['kistlerfile'])
+	return f"Received: {request.form['kistlerfile']}"
+# --------------------------------------------------
+# ==================================================
+# --------------------------------------------------
+
+flask_debug = False
+toolbar     = None
+
+def create_flask_app(name):
+	app = Flask(name)
+
+	if flask_debug:
+		app.secret_key = 'asdfasdfqwerqwer'
+		toolbar = DebugToolbarExtension(app)
+
+	return app
+
+
+def load_pandas(fname):
+	"Load in a `TabularPandas` object from `fname`"
+	distrib_barrier()
+	res = pickle.load(open(fname, 'rb'))
+	return res
 
 
 if __name__ == '__main__':
-    if 'serve' in sys.argv:
-        uvicorn.run(app=app, host='0.0.0.0', port=5000, log_level="info")
+	if 'serve' in sys.argv:
+		print(f'Starting main python script: {__name__}...')
+
+		uvicorn.run(app=app, host='0.0.0.0', port=55564, log_level="info")
+		app = create_flask_app(__name__)
+		app.run(host='0.0.0.0', port=55563, debug=flask_debug)
+
+
+print(f'Main python script: {__name__} exited...')
+
