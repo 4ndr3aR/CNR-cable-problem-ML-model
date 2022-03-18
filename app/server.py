@@ -193,13 +193,15 @@ if __name__ == '__main__':
 		print(f'Starting main python script: {__name__}...')
 
 		host='0.0.0.0'
-		port=55513
+		#port=55513
+		port=55563
 		#start_flask(port, host, debug=flask_debug)
 		t = Thread(target=start_flask, args=(port, host, flask_debug,))
 		t.start()
 
 		host='0.0.0.0'
-		port=55514
+		#port=55514
+		port=55564
 		print(f'Creating Uvicorn app with {host = }, {port = }')
 		uvicorn.run(app=app, host=host, port=port, log_level="info")			# HTML interface
 
