@@ -172,12 +172,10 @@ def start_flask(port, host='0.0.0.0', debug=False):
 	flask_app.run(host, port, debug)							# POST requests
 	return flask_app
 
-'''
 loop = asyncio.get_event_loop()
 tasks = [asyncio.ensure_future(setup_learner())]
 learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
 loop.close()
-'''
 
 if __name__ == '__main__':
 	if 'serve' in sys.argv:
@@ -185,16 +183,14 @@ if __name__ == '__main__':
 
 		host='0.0.0.0'
 		port=55513
-		start_flask(port, host, debug=flask_debug)
-		#t = Thread(target=start_flask, args=(__name__, port, host, flask_debug,))
-		#t.start()
+		#start_flask(port, host, debug=flask_debug)
+		t = Thread(target=start_flask, args=(port, host, flask_debug,))
+		t.start()
 
-		'''
 		host='0.0.0.0'
 		port=55514
 		print(f'Creating Uvicorn app with {host = }, {port = }')
 		uvicorn.run(app=app, host=host, port=port, log_level="info")			# HTML interface
-		'''
 
 
 
