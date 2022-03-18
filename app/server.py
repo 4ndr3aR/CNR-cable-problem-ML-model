@@ -8,14 +8,17 @@ import torch
 import aiohttp
 import asyncio
 import uvicorn
+
 from fastai import *
 #from fastai.vision import *
 from fastai.tabular import *
 from fastai.tabular.learner import TabularLearner
 from fastai.learner import load_learner
 from pathlib import Path
+
 from io import BytesIO
 from io import StringIO
+
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
@@ -26,6 +29,8 @@ from flask_debugtoolbar import DebugToolbarExtension
 import logging
 
 from wwf.tab.export import *
+
+from threading import Thread
 
 import ditac_kistlerfile_reader
 from ditac_kistlerfile_reader import KistlerFile
@@ -92,30 +97,8 @@ async def setup_learner():
 			raise
 
 
-loop = asyncio.get_event_loop()
-tasks = [asyncio.ensure_future(setup_learner())]
-learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
-loop.close()
 
-# --------------------------------------------------
-# ====================== HTML ======================
-# --------------------------------------------------
-@app.route('/')
-async def homepage(request):
-    html_file = path / 'view' / 'index.html'
-    return HTMLResponse(html_file.open().read())
-
-@app.route('/analyze', methods=['POST'])
-async def analyze(request):
-	form_data = await request.form()
-	#img_bytes = await (img_data['file'].read())
-	#img = open_image(BytesIO(img_bytes))
-	#prediction = learn.predict(img)[0]
-	starlette_data = await(form_data['file'].read())
-	#print(f'{fname = }')
-	#csvdata = BytesIO(starlette_data)
-	csvdata = StringIO(str(starlette_data.decode("utf-8")))
-	#print(f'{csvdata.readlines() = }')
+def process_csvdata(csvdata):
 	debug = False
 	if debug:
 		df = pd.read_csv(csvdata, skiprows=KistlerFile.kistler_dataframe_line_offset, sep=';', decimal=',')
@@ -131,21 +114,43 @@ async def analyze(request):
 	row, clas, probs = learn.predict(sample)
 	#row.show()
 	#probs
+	return row, clas, probs
+
+
+# --------------------------------------------------
+# ====================== HTML ======================
+# --------------------------------------------------
+@app.route('/')
+async def homepage(request):
+    html_file = path / 'view' / 'index.html'
+    return HTMLResponse(html_file.open().read())
+
+@app.route('/analyze', methods=['POST'])
+async def analyze(request):
+	form_data = await request.form()
+	starlette_data = await(form_data['file'].read())
+	csvdata = StringIO(str(starlette_data.decode("utf-8")))
+
+	row, clas, probs = process_csvdata(csvdata)
 
 	return JSONResponse({'result': str(classes[int(clas)]) + ' -> ' + str(probs)})
 # --------------------------------------------------
 # ==================================================
 # --------------------------------------------------
 
+flask_debug = False
+toolbar     = None
+flask_app   = Flask(__name__)
+
 # --------------------------------------------------
 # ====================== POST ======================
 # --------------------------------------------------
-@app.route('/debug')
+@flask_app.route('/debug')
 def index():
     logging.warning("See this message in Flask Debug Toolbar!")
     return "<html><body>it works, now try a post request...</body></html>"
 
-@app.route('/post', methods=['POST'])
+@flask_app.route('/post', methods=['POST'])
 def result():
 	print(request.form['kistlerfile'])
 	return f"Received: {request.form['kistlerfile']}"
@@ -153,34 +158,45 @@ def result():
 # ==================================================
 # --------------------------------------------------
 
-flask_debug = False
-toolbar     = None
-
-def create_flask_app(name):
-	app = Flask(name)
-
-	if flask_debug:
-		app.secret_key = 'asdfasdfqwerqwer'
-		toolbar = DebugToolbarExtension(app)
-
-	return app
-
-
 def load_pandas(fname):
 	"Load in a `TabularPandas` object from `fname`"
 	distrib_barrier()
 	res = pickle.load(open(fname, 'rb'))
 	return res
 
+def start_flask(port, host='0.0.0.0', debug=False):
+	print(f'Running Flask app with {host = }, {port = }')
+	if flask_debug:
+		app.secret_key = 'asdfasdfqwerqwer'
+		toolbar = DebugToolbarExtension(flask_app)
+	flask_app.run(host, port, debug)							# POST requests
+	return flask_app
+
+'''
+loop = asyncio.get_event_loop()
+tasks = [asyncio.ensure_future(setup_learner())]
+learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
+loop.close()
+'''
 
 if __name__ == '__main__':
 	if 'serve' in sys.argv:
 		print(f'Starting main python script: {__name__}...')
 
-		uvicorn.run(app=app, host='0.0.0.0', port=55564, log_level="info")
-		app = create_flask_app(__name__)
-		app.run(host='0.0.0.0', port=55563, debug=flask_debug)
+		host='0.0.0.0'
+		port=55513
+		start_flask(port, host, debug=flask_debug)
+		#t = Thread(target=start_flask, args=(__name__, port, host, flask_debug,))
+		#t.start()
+
+		'''
+		host='0.0.0.0'
+		port=55514
+		print(f'Creating Uvicorn app with {host = }, {port = }')
+		uvicorn.run(app=app, host=host, port=port, log_level="info")			# HTML interface
+		'''
 
 
-print(f'Main python script: {__name__} exited...')
+
+print(f'Main python script: {__name__} reached the end...')
 
