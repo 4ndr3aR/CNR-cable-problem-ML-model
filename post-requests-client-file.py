@@ -15,7 +15,7 @@ with open(kfname, 'rb') as kfd:
 
 print(f'{kfdata = }')
 
-port = 55513
+port = 55563
 print(f'Performing post request on port {port}\n')
 r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/post', data={'filename': kfname, 'kistlerfile': kfdata})
 
