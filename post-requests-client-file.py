@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3.8
 
 import sys
 import requests
@@ -17,7 +17,7 @@ print(f'{kfdata = }')
 
 port = 55513
 print(f'Performing post request on port {port}\n')
-r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/post', data={'kistlerfile': 'fake base64-encoded data'})
+r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/post', data={'filename': kfname, 'kistlerfile': kfdata})
 
 # And done.
 print(f'Answer:')
