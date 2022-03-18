@@ -16,6 +16,8 @@ from fastai.tabular.learner import TabularLearner
 from fastai.learner import load_learner
 from pathlib import Path
 
+import hashlib
+
 from io import BytesIO
 from io import StringIO
 
@@ -152,8 +154,17 @@ def index():
 
 @flask_app.route('/post', methods=['POST'])
 def result():
-	print(request.form['kistlerfile'])
-	return f"Received: {request.form['kistlerfile']}"
+	#print(request.form['kistlerfile'])
+	print(request.form['filename'])
+	content = request.form['kistlerfile']
+	#return f"Received: {request.form['filename']} -> {request.form['kistlerfile']}"
+	readable_hash = hashlib.sha256(content.encode('utf-8')).hexdigest();
+
+	csvdata = StringIO(str(content))
+
+	row, clas, probs = process_csvdata(csvdata)
+
+	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}"
 # --------------------------------------------------
 # ==================================================
 # --------------------------------------------------
