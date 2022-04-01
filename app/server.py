@@ -38,14 +38,20 @@ import ditac_kistlerfile_reader
 from ditac_kistlerfile_reader import KistlerFile
 from ditac_kistlerfile_reader import create_inference_ready_sample
 
-export_file_url  = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pt'
-export_to_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
-export_df_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-df.csv'
-export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
-export_file_name = 'ditac-cable-problem-v0.6-endoftraining.pt'
-export_to_name   = 'ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
-export_df_name   = 'ditac-cable-problem-v0.6-endoftraining-df.csv'
-export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
+import argparse
+
+from argument_parser import define_boolean_argument
+from argument_parser import var2opt
+
+
+#export_file_url  = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pt'
+#export_to_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
+#export_df_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-df.csv'
+#export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
+#export_file_name = 'ditac-cable-problem-v0.6-endoftraining.pt'
+#export_to_name   = 'ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
+#export_df_name   = 'ditac-cable-problem-v0.6-endoftraining-df.csv'
+#export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
 
 classes = [False, True]
 path = Path(__file__).parent
@@ -64,11 +70,15 @@ async def download_file(url, dest):
                 f.write(data)
 
 
-async def setup_learner():
-	await download_file(export_file_url, path / export_file_name)
-	await download_file(export_to_url, path / export_to_name)
-	await download_file(export_df_url, path / export_df_name)
-	await download_file(export_pkl_url, path / export_pkl_name)
+async def setup_learner(url, model_name):
+	#await download_file(export_file_url, path / export_file_name)
+	#await download_file(export_to_url, path / export_to_name)
+	#await download_file(export_df_url, path / export_df_name)
+	if url is None or model_name is None:
+			message = "\n\nNo model download URL or model destination name has been specified. Exiting...\n"
+			raise RuntimeError(message)
+	print(f'Downloading model from: {url} with model name: {model_name}')
+	await download_file(url, path / model_name)
 	try:
 		'''
 		to      = load_pandas(path / export_to_name)
@@ -86,7 +96,7 @@ async def setup_learner():
 		print(f'{model = }')
 		learn   = TabularLearner(dls_new, model, to.loss_func)
 		'''
-		learn = load_learner(path / export_pkl_name)
+		learn = load_learner(path / model_name)
 		print(f'{learn = }')
 		#learn = load_learner(path, export_file_name)
 		return learn
@@ -183,25 +193,58 @@ def start_flask(port, host='0.0.0.0', debug=False):
 	flask_app.run(host, port, debug)							# POST requests
 	return flask_app
 
+
+def check_port(port):
+	if type(port) != int or port < 1 or port > 65535:
+		message = "\n\nPlease provide a valid port number. Exiting...\n"
+		raise RuntimeError(message)
+
+def argument_parser():
+	parser = argparse.ArgumentParser(description='Image Segmentation Inference with Fast.ai v2 and SemTorch')
+
+	'''
+export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
+export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
+	'''
+
+	parser.add_argument('--cmd',		default="serve"		, help='the function to execute, default: serve')
+	parser.add_argument('--model-name'				, help='the model to load for inference in .pkl format')
+	parser.add_argument('--model-url'				, help='the URL where to download the model')
+	parser.add_argument('--web-port',	default=55564, type=int	, help='web interface (for debug purposes) port')
+	parser.add_argument('--flask-port',	default=55563, type=int	, help='flask TCP port where to receive POST requests')
+
+	args = parser.parse_args()
+
+	print(f'argument_parser() received arguments: {args}')
+
+	return args
+
+
+args = argument_parser()
+
 loop = asyncio.get_event_loop()
-tasks = [asyncio.ensure_future(setup_learner())]
+tasks = [asyncio.ensure_future(setup_learner(args.model_url, args.model_name))]
 learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
 loop.close()
 
 if __name__ == '__main__':
-	if 'serve' in sys.argv:
+	if 'serve' in args.cmd:
 		print(f'Starting main python script: {__name__}...')
 
 		host='0.0.0.0'
 		#port=55513
-		port=55563
+		#port=55563
+		port=args.flask_port
+		check_port(port)
 		#start_flask(port, host, debug=flask_debug)
 		t = Thread(target=start_flask, args=(port, host, flask_debug,))
 		t.start()
 
 		host='0.0.0.0'
 		#port=55514
-		port=55564
+		#port=55564
+		port=args.web_port
+		check_port(port)
 		print(f'Creating Uvicorn app with {host = }, {port = }')
 		uvicorn.run(app=app, host=host, port=port, log_level="info")			# HTML interface
 

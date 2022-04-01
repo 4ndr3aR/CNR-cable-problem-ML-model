@@ -6,6 +6,9 @@ import requests
 if len(sys.argv) < 2:
 	print(f'Please provide a KistlerFile name to read...')
 	sys.exit()
+if len(sys.argv) < 3:
+	print(f'Please provide a port number...')
+	sys.exit()
 
 kfname = sys.argv[1]
 print(f'Reading filename: {kfname}')
@@ -15,7 +18,8 @@ with open(kfname, 'rb') as kfd:
 
 print(f'{kfdata = }')
 
-port = 55563
+#port = 55563
+port = int(sys.argv[2])
 print(f'Performing post request on port {port}\n')
 r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/post', data={'filename': kfname, 'kistlerfile': kfdata})
 
