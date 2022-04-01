@@ -165,7 +165,7 @@ def index():
 @flask_app.route('/post', methods=['POST'])
 def result():
 	#print(request.form['kistlerfile'])
-	print(request.form['filename'])
+	print(f'\n\nReceived filename: {Path(request.form["filename"]).stem}\n\n')
 	content = request.form['kistlerfile']
 	#return f"Received: {request.form['filename']} -> {request.form['kistlerfile']}"
 	readable_hash = hashlib.sha256(content.encode('utf-8')).hexdigest();
@@ -173,6 +173,7 @@ def result():
 	csvdata = StringIO(str(content))
 
 	row, clas, probs = process_csvdata(csvdata)
+	print(f'\n\nPrediction for filename: {Path(request.form["filename"]).stem} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}\n\n')
 
 	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}"
 # --------------------------------------------------
