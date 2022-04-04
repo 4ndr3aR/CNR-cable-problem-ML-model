@@ -14,7 +14,6 @@ import asyncio
 import uvicorn
 
 from fastai import *
-#from fastai.vision import *
 from fastai.tabular import *
 from fastai.tabular.learner import TabularLearner
 from fastai.learner import load_learner
@@ -50,15 +49,6 @@ from argument_parser import define_boolean_argument
 from argument_parser import var2opt
 
 
-#export_file_url  = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pt'
-#export_to_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
-#export_df_url    = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining-df.csv'
-#export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
-#export_file_name = 'ditac-cable-problem-v0.6-endoftraining.pt'
-#export_to_name   = 'ditac-cable-problem-v0.6-endoftraining-TabularPandas-object-to.pkl'
-#export_df_name   = 'ditac-cable-problem-v0.6-endoftraining-df.csv'
-#export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
-
 classes = [False, True]
 path = Path(__file__).parent
 
@@ -77,9 +67,6 @@ async def download_file(url, dest):
 
 
 async def setup_learner(cmd, url, model_name):
-	#await download_file(export_file_url, path / export_file_name)
-	#await download_file(export_to_url, path / export_to_name)
-	#await download_file(export_df_url, path / export_df_name)
 	if 'serve' in cmd:
 		if url is None or model_name is None:
 				message = "\n\nNo model download URL or model destination name has been specified. Exiting...\n"
@@ -90,25 +77,8 @@ async def setup_learner(cmd, url, model_name):
 	print(f'Downloading model from: {url} with model name: {model_name}')
 	await download_file(url, path / model_name)
 	try:
-		'''
-		to      = load_pandas(path / export_to_name)
-		print(f'{to = }')
-
-		df = pd.read_csv(path / export_df_name).T
-		df = df.astype({col: np.float16 for col in df.columns[:-1]})
-		df = df.convert_dtypes()
-		to_new = to.train.new(df)
-		print(f'{to_new = }')
-		to_new.process()
-		dls_new = to_new.dataloaders(bs=8)
-
-		model   = torch.load(f'{path}/{export_file_name}')
-		print(f'{model = }')
-		learn   = TabularLearner(dls_new, model, to.loss_func)
-		'''
 		learn = load_learner(path / model_name)
 		print(f'{learn = }')
-		#learn = load_learner(path, export_file_name)
 		return learn
 	except RuntimeError as e:
 		if len(e.args) > 0 and 'CPU-only machine' in e.args[0]:
@@ -134,8 +104,6 @@ def process_csvdata(csvdata):
 
 	sample = create_inference_ready_sample(kf, debug=False)
 	row, clas, probs = learn.predict(sample)
-	#row.show()
-	#probs
 	return row, clas, probs, kf
 
 
@@ -174,10 +142,8 @@ def index():
 
 @flask_app.route('/post', methods=['POST'])
 def result():
-	#print(request.form['kistlerfile'])
 	print(f'\n\nReceived filename: {Path(request.form["filename"]).stem}\n\n')
 	content = request.form['kistlerfile']
-	#return f"Received: {request.form['filename']} -> {request.form['kistlerfile']}"
 	readable_hash = hashlib.sha256(content.encode('utf-8')).hexdigest();
 
 	csvdata = StringIO(str(content))
@@ -197,29 +163,22 @@ def result():
 	print(f'\nWriting graph to: {graphfn}, CSV file to {csvfn} and HTML file to {htmlfn}')
 
 	graphfn.parent.mkdir(exist_ok=True, parents=True)
-	#resampledfn.parent.mkdir(exist_ok=True, parents=True)
 	csvfn.parent.mkdir(exist_ok=True, parents=True)
 	htmlfn.parent.mkdir(exist_ok=True, parents=True)
 
 	kf.graph(resampled=False, both=True, debug=False, filename=graphfn)
-	#kf.graph(resampled=True,  both=False, debug=False, filename=resampledfn)
 
 	with open(csvfn, 'w') as fd:
 		csvdata.seek(0)
 		shutil.copyfileobj(csvdata, fd)
 
 	graphfnlink	= Path('..') / Path(*graphfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
-	#resampledfnlink= Path('..') / Path(*resampledfn.parts[3:])	# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
 	csvfnlink	= Path('..') / Path(*csvfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
-	#print(f'Writing links: {graphfnlink} - {resampledfnlink} - {csvfnlink}')
 	print(f'Writing links: {graphfnlink} - {csvfnlink}')
-	#template    = open(basepath / 'template.html').read().format(csv_fn=csvfnlink, resampled_fn=resampledfnlink, graph_fn=graphfnlink, pred=predstr)
 	template    = open(basepath / 'template.html').read().format(csv_fn=csvfnlink, graph_fn=graphfnlink, pred=predstr)
 
 	with open(htmlfn, "w") as html_file:
 		html_file.write(template)
-
-	#print(type(template), template)
 
 	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {predstr} -> probs: {str(probs)}"
 # --------------------------------------------------
@@ -249,11 +208,6 @@ def check_port(port):
 def argument_parser():
 	parser = argparse.ArgumentParser(description='Image Segmentation Inference with Fast.ai v2 and SemTorch')
 
-	'''
-export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl'
-export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
-	'''
-
 	parser.add_argument('--cmd',		default=""		, help='the function to execute, default: serve')
 	parser.add_argument('--model-name'				, help='the model to load for inference in .pkl format')
 	parser.add_argument('--model-url'				, help='the URL where to download the model')
@@ -279,17 +233,12 @@ if __name__ == '__main__':
 		print(f'Starting main python script: {__name__}...')
 
 		host='0.0.0.0'
-		#port=55513
-		#port=55563
 		port=args.flask_port
 		check_port(port)
-		#start_flask(port, host, debug=flask_debug)
 		t = Thread(target=start_flask, args=(port, host, flask_debug,))
 		t.start()
 
 		host='0.0.0.0'
-		#port=55514
-		#port=55564
 		port=args.web_port
 		check_port(port)
 		print(f'Creating Uvicorn app with {host = }, {port = }')
@@ -297,8 +246,6 @@ if __name__ == '__main__':
 		print(f'Killing self pid: {os.getpid()} to get rid of Flask...')
 		time.sleep(2)
 		os.kill(os.getpid(), signal.SIGKILL)
-
-
 
 print(f'Main python script: {__name__} reached the end...')
 
