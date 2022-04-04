@@ -198,7 +198,7 @@ class KistlerFile:
 
         self.draw_constraints(ax)
 
-    def graph(self, resampled=False, both=False, debug=False):
+    def graph(self, resampled=False, both=False, debug=False, filename=None):
         "Plot both graph and constraints (= tests) of both the original and resampled DataFrame"
 
         if both:
@@ -223,7 +223,10 @@ class KistlerFile:
             ax = ax2
             self.draw_resampled_graph(ax)
 
-        plt.show()
+        if filename is not None:
+            plt.savefig(filename, bbox_inches='tight')
+        else:
+            plt.show()
 
     # read just the tests
     def read_tests(self, fname, debug=False):

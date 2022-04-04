@@ -12,7 +12,6 @@ COPY app app/
 
 RUN python app/server.py
 
-
 EXPOSE 55563 55564
 
 CMD ["python", "app/server.py", "--cmd", "serve", "--model-url", "http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable-problem-v0.6-endoftraining.pkl", "--model-name", "ditac-cable-problem-v0.6-endoftraining.pkl", "--flask-port", "55563", "--web-port", "55564"]

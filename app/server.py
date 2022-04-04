@@ -1,6 +1,10 @@
 #!/usr/bin/env python
 
+import os
 import sys
+import time
+import signal
+
 import numpy as np
 import pandas as pd
 
@@ -70,13 +74,17 @@ async def download_file(url, dest):
                 f.write(data)
 
 
-async def setup_learner(url, model_name):
+async def setup_learner(cmd, url, model_name):
 	#await download_file(export_file_url, path / export_file_name)
 	#await download_file(export_to_url, path / export_to_name)
 	#await download_file(export_df_url, path / export_df_name)
-	if url is None or model_name is None:
-			message = "\n\nNo model download URL or model destination name has been specified. Exiting...\n"
-			raise RuntimeError(message)
+	if 'serve' in cmd:
+		if url is None or model_name is None:
+				message = "\n\nNo model download URL or model destination name has been specified. Exiting...\n"
+				raise RuntimeError(message)
+	else:
+		# do nothing, we're being called by docker's RUN instruction
+		return
 	print(f'Downloading model from: {url} with model name: {model_name}')
 	await download_file(url, path / model_name)
 	try:
@@ -126,7 +134,7 @@ def process_csvdata(csvdata):
 	row, clas, probs = learn.predict(sample)
 	#row.show()
 	#probs
-	return row, clas, probs
+	return row, clas, probs, kf
 
 
 # --------------------------------------------------
@@ -143,7 +151,7 @@ async def analyze(request):
 	starlette_data = await(form_data['file'].read())
 	csvdata = StringIO(str(starlette_data.decode("utf-8")))
 
-	row, clas, probs = process_csvdata(csvdata)
+	row, clas, probs, kf = process_csvdata(csvdata)
 
 	return JSONResponse({'result': str(classes[int(clas)]) + ' -> ' + str(probs)})
 # --------------------------------------------------
@@ -172,8 +180,12 @@ def result():
 
 	csvdata = StringIO(str(content))
 
-	row, clas, probs = process_csvdata(csvdata)
+	row, clas, probs, kf = process_csvdata(csvdata)
 	print(f'\n\nPrediction for filename: {Path(request.form["filename"]).stem} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}\n\n')
+	graphfn = Path('/app/static') / (Path(request.form["filename"]).stem + '.png')
+	print(f'\nWriting graph to: {graphfn}')
+	graphfn.parent.mkdir(exist_ok=True, parents=True)
+	kf.graph(resampled=True, both=False, debug=False, filename=graphfn)
 
 	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}"
 # --------------------------------------------------
@@ -208,7 +220,7 @@ export_pkl_url   = 'http://deeplearning.ge.imati.cnr.it/ditac/models/ditac-cable
 export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
 	'''
 
-	parser.add_argument('--cmd',		default="serve"		, help='the function to execute, default: serve')
+	parser.add_argument('--cmd',		default=""		, help='the function to execute, default: serve')
 	parser.add_argument('--model-name'				, help='the model to load for inference in .pkl format')
 	parser.add_argument('--model-url'				, help='the URL where to download the model')
 	parser.add_argument('--web-port',	default=55564, type=int	, help='web interface (for debug purposes) port')
@@ -224,7 +236,7 @@ export_pkl_name  = 'ditac-cable-problem-v0.6-endoftraining.pkl'
 args = argument_parser()
 
 loop = asyncio.get_event_loop()
-tasks = [asyncio.ensure_future(setup_learner(args.model_url, args.model_name))]
+tasks = [asyncio.ensure_future(setup_learner(args.cmd, args.model_url, args.model_name))]
 learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
 loop.close()
 
@@ -248,6 +260,9 @@ if __name__ == '__main__':
 		check_port(port)
 		print(f'Creating Uvicorn app with {host = }, {port = }')
 		uvicorn.run(app=app, host=host, port=port, log_level="info")			# HTML interface
+		print(f'Killing self pid: {os.getpid()} to get rid of Flask...')
+		time.sleep(2)
+		os.kill(os.getpid(), signal.SIGKILL)
 
 
 
