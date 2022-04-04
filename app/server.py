@@ -22,6 +22,8 @@ from pathlib import Path
 
 import hashlib
 
+import shutil
+
 from io import BytesIO
 from io import StringIO
 
@@ -181,13 +183,45 @@ def result():
 	csvdata = StringIO(str(content))
 
 	row, clas, probs, kf = process_csvdata(csvdata)
-	print(f'\n\nPrediction for filename: {Path(request.form["filename"]).stem} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}\n\n')
-	graphfn = Path('/app/static') / (Path(request.form["filename"]).stem + '.png')
-	print(f'\nWriting graph to: {graphfn}')
-	graphfn.parent.mkdir(exist_ok=True, parents=True)
-	kf.graph(resampled=True, both=False, debug=False, filename=graphfn)
+	predstr = str(classes[int(clas)])
 
-	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {str(classes[int(clas)])} -> probs: {str(probs)}"
+	print(f'\n\nPrediction for filename: {Path(request.form["filename"]).stem} -> class: {predstr} -> probs: {str(probs)}\n\n')
+
+	basepath = Path('/app/static')
+
+	graphfn     = basepath / 'graph' / (Path(request.form["filename"]).stem + '.png')
+	resampledfn = basepath / 'graph' / (Path(request.form["filename"]).stem + '-resampled.png')
+	csvfn       = basepath / 'data'  / (Path(request.form["filename"]).name)
+	htmlfn      = basepath / 'html'  / (Path(request.form["filename"]).stem + '.html')
+
+	print(f'\nWriting graph to: {graphfn}, CSV file to {csvfn} and HTML file to {htmlfn}')
+
+	graphfn.parent.mkdir(exist_ok=True, parents=True)
+	#resampledfn.parent.mkdir(exist_ok=True, parents=True)
+	csvfn.parent.mkdir(exist_ok=True, parents=True)
+	htmlfn.parent.mkdir(exist_ok=True, parents=True)
+
+	kf.graph(resampled=False, both=True, debug=False, filename=graphfn)
+	#kf.graph(resampled=True,  both=False, debug=False, filename=resampledfn)
+
+	with open(csvfn, 'w') as fd:
+		csvdata.seek(0)
+		shutil.copyfileobj(csvdata, fd)
+
+	graphfnlink	= Path('..') / Path(*graphfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
+	#resampledfnlink= Path('..') / Path(*resampledfn.parts[3:])	# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
+	csvfnlink	= Path('..') / Path(*csvfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
+	#print(f'Writing links: {graphfnlink} - {resampledfnlink} - {csvfnlink}')
+	print(f'Writing links: {graphfnlink} - {csvfnlink}')
+	#template    = open(basepath / 'template.html').read().format(csv_fn=csvfnlink, resampled_fn=resampledfnlink, graph_fn=graphfnlink, pred=predstr)
+	template    = open(basepath / 'template.html').read().format(csv_fn=csvfnlink, graph_fn=graphfnlink, pred=predstr)
+
+	with open(htmlfn, "w") as html_file:
+		html_file.write(template)
+
+	#print(type(template), template)
+
+	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {predstr} -> probs: {str(probs)}"
 # --------------------------------------------------
 # ==================================================
 # --------------------------------------------------
