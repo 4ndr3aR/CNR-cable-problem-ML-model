@@ -34,9 +34,9 @@ from wwf.tab.export import *
 
 from threading import Thread
 
-import ditac_kistlerfile_reader
-from ditac_kistlerfile_reader import KistlerFile
-from ditac_kistlerfile_reader import create_inference_ready_sample
+import kistlerfile
+from kistlerfile import KistlerFile
+from kistlerfile import create_inference_ready_sample
 
 import argparse
 
