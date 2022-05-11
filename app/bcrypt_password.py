@@ -13,12 +13,12 @@ def encrpyt_password(plaintext_password, salt_rounds=12, debug=False):
 
 def verify_password(plaintext_password, hashed_password, salt=b'', debug=False):
 	if debug:
-		retrieved_salt = hashed.find(salt)
+		retrieved_salt = hashed_password.find(salt)
 		print(f'Correct salt from bcrypt hashed password? {retrieved_salt}')
-	hashed2 = bcrypt.hashpw(plaintext_password.encode('UTF8'), hashed)
+	hashed2 = bcrypt.hashpw(plaintext_password.encode('UTF8'), hashed_password)
 	if debug:
 		print(f'bcrypt salted and hashed password (to be verified): {hashed2}')
-	match = (hashed == hashed2)
+	match = (hashed_password == hashed2)
 	if debug:
 		print(f'The two salted and hashed passwords match? {match}')
 	return hashed2, match

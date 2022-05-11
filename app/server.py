@@ -39,6 +39,8 @@ from wwf.tab.export import *
 
 from threading import Thread
 
+from colored import fg, bg, attr
+
 import kistlerfile
 from kistlerfile import KistlerFile
 from kistlerfile import create_inference_ready_sample
@@ -47,6 +49,9 @@ import argparse
 
 from argument_parser import define_boolean_argument
 from argument_parser import var2opt
+
+from bcrypt_password import encrpyt_password, verify_password
+
 
 
 classes = [False, True]
@@ -142,7 +147,51 @@ def index():
 
 @flask_app.route('/post', methods=['POST'])
 def result():
-	print(f'\n\nReceived filename: {Path(request.form["filename"]).stem}\n\n')
+	rst = attr("reset")
+	debug = True
+	fake_user_pass_db = {
+				'user1': 'password1',
+				'user2': 'password2',
+				'user3': 'password3',
+				'user4': 'password4',
+			}
+
+	if 'username' in request.form and 'password' in request.form:
+		username            = request.form['username']
+		plaintext_password  = request.form['password']
+	else:
+		print(f'\n\n{fg("white")}{bg("red_1")}No username and/or password received, continuing in "compatibility mode" {attr("blink")}(deprecated, will be removed in the future){rst}')
+		username            = 'user1'
+		plaintext_password  = 'password1'
+	print(f'\n\nReceived username: {fg("chartreuse_2a")}{username}{rst} and password: {fg("turquoise_2")}{plaintext_password}{rst}\n\n')
+	if username in fake_user_pass_db:
+		db_password = fake_user_pass_db[username]
+	else:
+		msg = 'Authentication denied, no such user: '
+		print(f'{fg("red_1")}{36*"-"}{rst}')
+		print(f'{fg("red_1")}{msg}{rst}{fg("chartreuse_2a")}{username}{rst}')
+		print(f'{fg("red_1")}{36*"-"}{rst}')
+		print('\n')
+		return f"/post received username: {username} -> {msg}{username}"
+
+	hashed,  salt  = encrpyt_password(plaintext_password, debug=debug)
+	hashed2, match = verify_password(plaintext_password=db_password, hashed_password=hashed, debug=debug)
+
+	if match:
+		print(f'{fg("chartreuse_2a")}{22*"-"}{rst}')
+		print(f'{fg("chartreuse_2a")}Authentication granted{rst}')
+		print(f'{fg("chartreuse_2a")}{22*"-"}{rst}')
+		print('\n')
+	else:
+		msg = 'Authentication denied, passwords do not match'
+		print(f'{fg("red_1")}{45*"-"}{rst}')
+		print(f'{fg("red_1")}{msg}{rst}')
+		print(f'{fg("red_1")}{45*"-"}{rst}')
+		print('\n')
+		return f"/post received username: {username} -> {msg}"
+
+
+	print(f'Received filename: {Path(request.form["filename"]).stem}\n\n')
 	content = request.form['kistlerfile']
 	readable_hash = hashlib.sha256(content.encode('utf-8')).hexdigest();
 
