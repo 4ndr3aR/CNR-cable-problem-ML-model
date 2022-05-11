@@ -11,3 +11,5 @@ python-multipart==0.0.5
 Flask==2.0.3
 Flask-DebugToolbar==0.11.0
 wwf==0.0.16
+colored==1.4.3
+bcrypt==3.2.2

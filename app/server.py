@@ -156,6 +156,11 @@ def result():
 				'user4': 'password4',
 			}
 
+	external_user = os.environ['EXT_USERNAME']
+	external_pass = os.environ['EXT_PASSWORD']
+	fake_user_pass_db[external_user] = external_pass
+	print(f'fake_user_pass_db: {fake_user_pass_db}')
+
 	if 'username' in request.form and 'password' in request.form:
 		username            = request.form['username']
 		plaintext_password  = request.form['password']

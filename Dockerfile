@@ -10,6 +10,9 @@ RUN pip install --upgrade -r requirements.txt
 
 COPY app app/
 
+ENV EXT_USERNAME=extuser1
+ENV EXT_PASSWORD=extpassword1
+
 RUN python app/server.py
 
 EXPOSE 55563 55564
