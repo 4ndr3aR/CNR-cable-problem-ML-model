@@ -1,9 +1,20 @@
 #!/usr/bin/env python
 
 import requests
-port = 55513
+#port = 55513
+port = 55563
 print(f'Performing post request on port {port}\n')
-r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/post', data={'kistlerfile': 'fake base64-encoded data'})
+page='post'
+#page='analyze'
+key='kistlerfile'
+#key='file'
+r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={key: 'fake base64-encoded data'})
+'''
+r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={
+										key: 'fake base64-encoded data',
+										'filename': 'fake filename',
+									})
+'''
 # And done.
 print(f'Answer:')
 print(20*'-')

@@ -180,7 +180,7 @@ def result():
 	with open(htmlfn, "w") as html_file:
 		html_file.write(template)
 
-	return f"Received: {request.form['filename']} -> sha256: {readable_hash} -> class: {predstr} -> probs: {str(probs)}"
+	return f"/post received: {request.form['filename']} -> sha256: {readable_hash} -> class: {predstr} -> probs: {str(probs)}"
 # --------------------------------------------------
 # ==================================================
 # --------------------------------------------------
