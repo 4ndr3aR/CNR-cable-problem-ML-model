@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
 import requests
-#port = 55513
-port = 55563
+port = 55512
+#port = 55563
 print(f'Performing post request on port {port}\n')
 page='post'
 #page='analyze'

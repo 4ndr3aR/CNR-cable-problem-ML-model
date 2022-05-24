@@ -31,6 +31,25 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
+from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires
+from starlette.middleware import Middleware
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.responses import PlainTextResponse
+from starlette.routing import Route
+
+
+from starlette.endpoints import HTTPEndpoint
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.responses import PlainTextResponse, RedirectResponse, Response
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocketDisconnect
+
+
+
+import base64
+import binascii
+
 from flask import Flask, request
 from flask_debugtoolbar import DebugToolbarExtension
 import logging
@@ -57,9 +76,82 @@ from bcrypt_password import encrpyt_password, verify_password
 classes = [False, True]
 path = Path(__file__).parent
 
-app = Starlette()
-app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
-app.mount('/static', StaticFiles(directory='app/static'))
+
+class BasicAuthBackend(AuthenticationBackend):
+	async def authenticate(self, conn):
+		if "Authorization" not in conn.headers:
+			return
+
+		auth = conn.headers["Authorization"]
+		try:
+			scheme, credentials = auth.split()
+			if scheme.lower() != 'basic':
+				return
+			decoded = base64.b64decode(credentials).decode("ascii")
+		except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+			raise AuthenticationError('Invalid basic auth credentials')
+
+		username, _, password = decoded.partition(":")
+		# TODO: You'd want to verify the username and password here.
+		print(f'{username = } - {password = }')
+		return AuthCredentials(["authenticated"]), SimpleUser(username)
+
+'''
+async def homepage(request):
+	if request.user.is_authenticated:
+		return PlainTextResponse('Hello, ' + request.user.display_name)
+	return PlainTextResponse('Hello, you')
+'''
+@requires("authenticated", redirect="login")
+async def homepage(request):
+    print(f'Requested home page via @app.route("/")')
+    html_file = path / 'view' / 'index.html'
+    return HTMLResponse(html_file.open().read())
+
+
+
+
+
+
+
+# --------------------------------------------------
+# ============== ROUTES AND ENDPOINTS ==============
+# --------------------------------------------------
+@requires("authenticated", redirect="homepage")
+async def admin(request):
+	return JSONResponse(
+	{
+		"authenticated": request.user.is_authenticated,
+		"user": request.user.display_name,
+	}
+	)
+# --------------------------------------------------
+# ==================================================
+# --------------------------------------------------
+
+
+
+
+
+
+
+
+routes = [
+		Route("/admin", endpoint=admin),
+		Route("/test", endpoint=homepage),
+		Route("/", endpoint=homepage),
+		#Route("/login", endpoint=login),
+	]
+
+middleware = [Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())]
+
+#DEBUG = config('DEBUG', cast=bool, default=False)
+
+app = Starlette(routes=routes, middleware=middleware) #, debug=DEBUG)
+
+#app = Starlette()
+#app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
+#app.mount('/static', StaticFiles(directory='app/static'))
 
 
 async def download_file(url, dest):
@@ -115,10 +207,22 @@ def process_csvdata(csvdata):
 # --------------------------------------------------
 # ====================== HTML ======================
 # --------------------------------------------------
+@app.route("/login")
+async def login(request):
+	if request.user.is_authenticated:
+		return RedirectResponse(url=f"/admin", status_code=303)
+	else:
+		response = Response(headers={"WWW-Authenticate": "Basic"}, status_code=401)
+	return response
+
+'''
+@requires("authenticated", redirect="login")
 @app.route('/')
 async def homepage(request):
+    print(f'Requested home page via @app.route("/")')
     html_file = path / 'view' / 'index.html'
     return HTMLResponse(html_file.open().read())
+'''
 
 @app.route('/analyze', methods=['POST'])
 async def analyze(request):
