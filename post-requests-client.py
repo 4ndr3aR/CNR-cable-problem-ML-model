@@ -1,14 +1,19 @@
 #!/usr/bin/env python
 
 import requests
-port = 55512
-#port = 55563
+#port = 55512
+port = 55563
 print(f'Performing post request on port {port}\n')
 page='post'
 #page='analyze'
 key='kistlerfile'
 #key='file'
-r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={key: 'fake base64-encoded data'})
+#r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={key: 'fake base64-encoded data'})
+r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={
+										key:		'fake base64-encoded data',
+										'username':	'extuser12',
+										'password':	'extpassword1',
+									})
 '''
 r = requests.post(f'http://deeplearning.ge.imati.cnr.it:{port}/{page}', data={
 										key: 'fake base64-encoded data',
