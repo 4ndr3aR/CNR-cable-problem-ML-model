@@ -31,7 +31,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
-from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires
+from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires, UnauthenticatedUser
 from starlette.middleware import Middleware
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.responses import PlainTextResponse
@@ -73,8 +73,10 @@ from bcrypt_password import encrpyt_password, verify_password
 
 
 
+rst = attr("reset")				# just to colorize text
 classes = [False, True]
 path = Path(__file__).parent
+user_pass_db = None				# to be populated later in main...
 
 
 class BasicAuthBackend(AuthenticationBackend):
@@ -94,14 +96,20 @@ class BasicAuthBackend(AuthenticationBackend):
 		username, _, password = decoded.partition(":")
 		# TODO: You'd want to verify the username and password here.
 		print(f'{username = } - {password = }')
+		password_verified, msg = verify_user_and_password(username, password)
+		if not password_verified:
+			#return f"BasicAuthBackend received username: {username} -> {msg}{username}"
+			return AuthCredentials(), UnauthenticatedUser()
 		return AuthCredentials(["authenticated"]), SimpleUser(username)
 
-'''
+@requires("authenticated", redirect="login")
 async def homepage(request):
 	if request.user.is_authenticated:
-		return PlainTextResponse('Hello, ' + request.user.display_name)
-	return PlainTextResponse('Hello, you')
-'''
+		html_file = path / 'view' / 'index.html'
+		#return PlainTextResponse('Hello, ' + request.user.display_name)
+		return HTMLResponse(html_file.open().read())
+	return PlainTextResponse('Hello, unauthenticated user!')
+
 @requires("authenticated", redirect="login")
 async def homepage(request):
     print(f'Requested home page via @app.route("/")')
@@ -150,8 +158,8 @@ middleware = [Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())]
 app = Starlette(routes=routes, middleware=middleware) #, debug=DEBUG)
 
 #app = Starlette()
-#app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
-#app.mount('/static', StaticFiles(directory='app/static'))
+app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
+app.mount('/static', StaticFiles(directory='app/static'))
 
 
 async def download_file(url, dest):
@@ -210,7 +218,7 @@ def process_csvdata(csvdata):
 @app.route("/login")
 async def login(request):
 	if request.user.is_authenticated:
-		return RedirectResponse(url=f"/admin", status_code=303)
+		return RedirectResponse(url=f"/", status_code=303)
 	else:
 		response = Response(headers={"WWW-Authenticate": "Basic"}, status_code=401)
 	return response
@@ -249,39 +257,18 @@ def index():
     logging.warning("See this message in Flask Debug Toolbar!")
     return "<html><body>it works, now try a post request...</body></html>"
 
-@flask_app.route('/post', methods=['POST'])
-def result():
-	rst = attr("reset")
-	debug = True
-	fake_user_pass_db = {
-				'user1': 'password1',
-				'user2': 'password2',
-				'user3': 'password3',
-				'user4': 'password4',
-			}
-
-	external_user = os.environ['EXT_USERNAME']
-	external_pass = os.environ['EXT_PASSWORD']
-	fake_user_pass_db[external_user] = external_pass
-	print(f'fake_user_pass_db: {fake_user_pass_db}')
-
-	if 'username' in request.form and 'password' in request.form:
-		username            = request.form['username']
-		plaintext_password  = request.form['password']
-	else:
-		print(f'\n\n{fg("white")}{bg("red_1")}No username and/or password received, continuing in "compatibility mode" {attr("blink")}(deprecated, will be removed in the future){rst}')
-		username            = 'user1'
-		plaintext_password  = 'password1'
+def verify_user_and_password(username, plaintext_password, debug=False):
 	print(f'\n\nReceived username: {fg("chartreuse_2a")}{username}{rst} and password: {fg("turquoise_2")}{plaintext_password}{rst}\n\n')
-	if username in fake_user_pass_db:
-		db_password = fake_user_pass_db[username]
+	if username in user_pass_db:
+		db_password = user_pass_db[username]
 	else:
 		msg = 'Authentication denied, no such user: '
 		print(f'{fg("red_1")}{36*"-"}{rst}')
 		print(f'{fg("red_1")}{msg}{rst}{fg("chartreuse_2a")}{username}{rst}')
 		print(f'{fg("red_1")}{36*"-"}{rst}')
 		print('\n')
-		return f"/post received username: {username} -> {msg}{username}"
+		#return f"/post received username: {username} -> {msg}{username}"
+		return False, msg
 
 	hashed,  salt  = encrpyt_password(plaintext_password, debug=debug)
 	hashed2, match = verify_password(plaintext_password=db_password, hashed_password=hashed, debug=debug)
@@ -291,14 +278,29 @@ def result():
 		print(f'{fg("chartreuse_2a")}Authentication granted{rst}')
 		print(f'{fg("chartreuse_2a")}{22*"-"}{rst}')
 		print('\n')
+		return True, ''
 	else:
-		msg = 'Authentication denied, passwords do not match'
+		msg = 'Authentication denied, passwords do not match for: '
 		print(f'{fg("red_1")}{45*"-"}{rst}')
 		print(f'{fg("red_1")}{msg}{rst}')
 		print(f'{fg("red_1")}{45*"-"}{rst}')
 		print('\n')
-		return f"/post received username: {username} -> {msg}"
+		return False, msg
 
+@flask_app.route('/post', methods=['POST'])
+def result():
+	debug = True
+	if 'username' in request.form and 'password' in request.form:
+		username            = request.form['username']
+		plaintext_password  = request.form['password']
+	else:
+		print(f'\n\n{fg("white")}{bg("red_1")}No username and/or password received, continuing in "compatibility mode" {attr("blink")}(deprecated, will be removed in the future){rst}')
+		username            = 'user1'
+		plaintext_password  = 'password1'
+
+	password_verified, msg = verify_user_and_password(username, plaintext_password)
+	if not password_verified:
+		return f"/post received username: {username} -> {msg}{username}"
 
 	print(f'Received filename: {Path(request.form["filename"]).stem}\n\n')
 	content = request.form['kistlerfile']
@@ -378,6 +380,20 @@ def argument_parser():
 
 	return args
 
+def create_user_pass_db():
+	user_pass_db = {
+				'user1': 'password1',
+				'user2': 'password2',
+				'user3': 'password3',
+				'user4': 'password4',
+			}
+
+	external_user = os.environ['EXT_USERNAME']
+	external_pass = os.environ['EXT_PASSWORD']
+	user_pass_db[external_user] = external_pass
+	print(f'user_pass_db: {user_pass_db}')
+	return user_pass_db
+
 
 args = argument_parser()
 
@@ -389,6 +405,8 @@ loop.close()
 if __name__ == '__main__':
 	if 'serve' in args.cmd:
 		print(f'Starting main python script: {__name__}...')
+
+		user_pass_db = create_user_pass_db()
 
 		host='0.0.0.0'
 		port=args.flask_port
