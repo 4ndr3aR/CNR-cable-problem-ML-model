@@ -17,7 +17,6 @@ from fastai import *
 from fastai.tabular import *
 from fastai.tabular.learner import TabularLearner
 from fastai.learner import load_learner
-from pathlib import Path
 
 import hashlib
 
@@ -26,28 +25,6 @@ import shutil
 from io import BytesIO
 from io import StringIO
 
-from starlette.applications import Starlette
-from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse, JSONResponse
-from starlette.staticfiles import StaticFiles
-
-from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires, UnauthenticatedUser
-from starlette.middleware import Middleware
-from starlette.middleware.authentication import AuthenticationMiddleware
-from starlette.responses import PlainTextResponse
-from starlette.routing import Route
-
-
-from starlette.endpoints import HTTPEndpoint
-from starlette.requests import Request
-from starlette.responses import JSONResponse
-from starlette.responses import PlainTextResponse, RedirectResponse, Response
-from starlette.routing import Route, WebSocketRoute
-from starlette.websockets import WebSocketDisconnect
-
-
-
-import base64
 import binascii
 
 from flask import Flask, request
@@ -69,52 +46,21 @@ import argparse
 from argument_parser import define_boolean_argument
 from argument_parser import var2opt
 
-from bcrypt_password import encrpyt_password, verify_password
+from starlette_auth  import *
+from bcrypt_password import user_pass_db, create_user_pass_db
 
 
 
-rst = attr("reset")				# just to colorize text
 classes = [False, True]
-path = Path(__file__).parent
-user_pass_db = None				# to be populated later in main...
 
 
-class BasicAuthBackend(AuthenticationBackend):
-	async def authenticate(self, conn):
-		if "Authorization" not in conn.headers:
-			return
-
-		auth = conn.headers["Authorization"]
-		try:
-			scheme, credentials = auth.split()
-			if scheme.lower() != 'basic':
-				return
-			decoded = base64.b64decode(credentials).decode("ascii")
-		except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
-			raise AuthenticationError('Invalid basic auth credentials')
-
-		username, _, password = decoded.partition(":")
-		# TODO: You'd want to verify the username and password here.
-		print(f'{username = } - {password = }')
-		password_verified, msg = verify_user_and_password(username, password)
-		if not password_verified:
-			#return f"BasicAuthBackend received username: {username} -> {msg}{username}"
-			return AuthCredentials(), UnauthenticatedUser()
-		return AuthCredentials(["authenticated"]), SimpleUser(username)
-
-@requires("authenticated", redirect="login")
-async def homepage(request):
-	if request.user.is_authenticated:
-		html_file = path / 'view' / 'index.html'
-		#return PlainTextResponse('Hello, ' + request.user.display_name)
-		return HTMLResponse(html_file.open().read())
-	return PlainTextResponse('Hello, unauthenticated user!')
-
+'''
 @requires("authenticated", redirect="login")
 async def homepage(request):
     print(f'Requested home page via @app.route("/")')
     html_file = path / 'view' / 'index.html'
     return HTMLResponse(html_file.open().read())
+'''
 
 
 
@@ -137,13 +83,6 @@ async def admin(request):
 # ==================================================
 # --------------------------------------------------
 
-
-
-
-
-
-
-
 routes = [
 		Route("/admin", endpoint=admin),
 		Route("/test", endpoint=homepage),
@@ -153,14 +92,13 @@ routes = [
 
 middleware = [Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())]
 
-#DEBUG = config('DEBUG', cast=bool, default=False)
-
-app = Starlette(routes=routes, middleware=middleware) #, debug=DEBUG)
-
-#app = Starlette()
+app = Starlette(routes=routes, middleware=middleware)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
 app.mount('/static', StaticFiles(directory='app/static'))
 
+# --------------------------------------------------
+# ==================================================
+# --------------------------------------------------
 
 async def download_file(url, dest):
     if dest.exists(): return
@@ -193,8 +131,6 @@ async def setup_learner(cmd, url, model_name):
 		else:
 			raise
 
-
-
 def process_csvdata(csvdata):
 	debug = False
 	if debug:
@@ -223,15 +159,6 @@ async def login(request):
 		response = Response(headers={"WWW-Authenticate": "Basic"}, status_code=401)
 	return response
 
-'''
-@requires("authenticated", redirect="login")
-@app.route('/')
-async def homepage(request):
-    print(f'Requested home page via @app.route("/")')
-    html_file = path / 'view' / 'index.html'
-    return HTMLResponse(html_file.open().read())
-'''
-
 @app.route('/analyze', methods=['POST'])
 async def analyze(request):
 	form_data = await request.form()
@@ -256,36 +183,6 @@ flask_app   = Flask(__name__)
 def index():
     logging.warning("See this message in Flask Debug Toolbar!")
     return "<html><body>it works, now try a post request...</body></html>"
-
-def verify_user_and_password(username, plaintext_password, debug=False):
-	print(f'\n\nReceived username: {fg("chartreuse_2a")}{username}{rst} and password: {fg("turquoise_2")}{plaintext_password}{rst}\n\n')
-	if username in user_pass_db:
-		db_password = user_pass_db[username]
-	else:
-		msg = 'Authentication denied, no such user: '
-		print(f'{fg("red_1")}{36*"-"}{rst}')
-		print(f'{fg("red_1")}{msg}{rst}{fg("chartreuse_2a")}{username}{rst}')
-		print(f'{fg("red_1")}{36*"-"}{rst}')
-		print('\n')
-		#return f"/post received username: {username} -> {msg}{username}"
-		return False, msg
-
-	hashed,  salt  = encrpyt_password(plaintext_password, debug=debug)
-	hashed2, match = verify_password(plaintext_password=db_password, hashed_password=hashed, debug=debug)
-
-	if match:
-		print(f'{fg("chartreuse_2a")}{22*"-"}{rst}')
-		print(f'{fg("chartreuse_2a")}Authentication granted{rst}')
-		print(f'{fg("chartreuse_2a")}{22*"-"}{rst}')
-		print('\n')
-		return True, ''
-	else:
-		msg = 'Authentication denied, passwords do not match for: '
-		print(f'{fg("red_1")}{45*"-"}{rst}')
-		print(f'{fg("red_1")}{msg}{rst}')
-		print(f'{fg("red_1")}{45*"-"}{rst}')
-		print('\n')
-		return False, msg
 
 @flask_app.route('/post', methods=['POST'])
 def result():
@@ -379,20 +276,6 @@ def argument_parser():
 	print(f'argument_parser() received arguments: {args}')
 
 	return args
-
-def create_user_pass_db():
-	user_pass_db = {
-				'user1': 'password1',
-				'user2': 'password2',
-				'user3': 'password3',
-				'user4': 'password4',
-			}
-
-	external_user = os.environ['EXT_USERNAME']
-	external_pass = os.environ['EXT_PASSWORD']
-	user_pass_db[external_user] = external_pass
-	print(f'user_pass_db: {user_pass_db}')
-	return user_pass_db
 
 
 args = argument_parser()
