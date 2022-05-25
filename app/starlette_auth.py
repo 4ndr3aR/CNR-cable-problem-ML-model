@@ -6,7 +6,7 @@ from pathlib import Path
 
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import HTMLResponse, JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse, FileResponse
 from starlette.staticfiles import StaticFiles
 
 from starlette.authentication import AuthCredentials, AuthenticationBackend, AuthenticationError, SimpleUser, requires, UnauthenticatedUser

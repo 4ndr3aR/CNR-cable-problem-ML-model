@@ -41,6 +41,8 @@ import kistlerfile
 from kistlerfile import KistlerFile
 from kistlerfile import create_inference_ready_sample
 
+import socket
+
 import argparse
 
 from argument_parser import define_boolean_argument
@@ -49,23 +51,19 @@ from argument_parser import var2opt
 from starlette_auth  import *
 from bcrypt_password import user_pass_db, create_user_pass_db
 
+classes = [False, True]		# for the ML model
+basepath = None
+userpath = None
 
-
-classes = [False, True]
-
-
-'''
-@requires("authenticated", redirect="login")
-async def homepage(request):
-    print(f'Requested home page via @app.route("/")')
-    html_file = path / 'view' / 'index.html'
-    return HTMLResponse(html_file.open().read())
-'''
-
-
-
-
-
+def set_paths():
+	hostname=socket.gethostname()
+	if hostname == 'zapp-brannigan':	# my PC, let's test stuff in /tmp please
+		basepath = Path('/tmp/static')
+		userpath = Path('/tmp/userdata')
+	else:
+		basepath = Path('/app/static')
+		userpath = Path('/app/userdata')
+	return basepath, userpath
 
 
 # --------------------------------------------------
@@ -79,22 +77,50 @@ async def admin(request):
 		"user": request.user.display_name,
 	}
 	)
+@requires("authenticated", redirect="login")
+async def userdata(request, debug=False):
+	# e.g. http://deeplearning.ge.imati.cnr.it:55514/userdata/graph/Part_maXYmos7_MP-001_2021-05-25_10-30-23_2_2105250957185363_______OK.png
+	if debug:
+		return JSONResponse(
+		{
+			"authenticated": request.user.is_authenticated,
+			"user": request.user.display_name,
+			"path": request.path_params.rest_of_path,
+		})
+	else:
+		print(f'Received request: {request.path_params}')
+		extra_path = request.path_params["rest_of_path"]
+		print(f'Received path   : {extra_path}')
+		if 'html' in Path(extra_path).suffix:
+			# e.g. http://deeplearning.ge.imati.cnr.it:55514/userdata/html/Part_maXYmos7_MP-001_2021-05-25_10-30-23_2_2105250957185363_______OK.html
+			html_file = userpath / extra_path
+			return HTMLResponse(html_file.open().read())
+		else:
+			# e.g. http://deeplearning.ge.imati.cnr.it:55514/userdata/graph/Part_maXYmos7_MP-001_2021-05-25_10-30-23_2_2105250957185363_______OK.png
+			#return HTMLResponse(f'<html><body>Resource not allowed: {extra_path}</body></html>')
+			generic_file = userpath / extra_path
+			return FileResponse(generic_file)
+
 # --------------------------------------------------
 # ==================================================
 # --------------------------------------------------
 
+basepath, userpath = set_paths()
+
 routes = [
-		Route("/admin", endpoint=admin),
-		Route("/test", endpoint=homepage),
-		Route("/", endpoint=homepage),
+		Route("/admin",	endpoint=admin),
+		#Route("/test",	endpoint=homepage),
+		Route("/",	endpoint=homepage),
 		#Route("/login", endpoint=login),
+		Route('/userdata/{rest_of_path:path}', userdata)
 	]
 
 middleware = [Middleware(AuthenticationMiddleware, backend=BasicAuthBackend())]
 
 app = Starlette(routes=routes, middleware=middleware)
 app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_headers=['X-Requested-With', 'Content-Type'])
-app.mount('/static', StaticFiles(directory='app/static'))
+#app.mount('/static', StaticFiles(directory='app/static'))
+app.mount('/static', StaticFiles(directory=basepath))
 
 # --------------------------------------------------
 # ==================================================
@@ -210,12 +236,10 @@ def result():
 
 	print(f'\n\nPrediction for filename: {Path(request.form["filename"]).stem} -> class: {predstr} -> probs: {str(probs)}\n\n')
 
-	basepath = Path('/app/static')
-
-	graphfn     = basepath / 'graph' / (Path(request.form["filename"]).stem + '.png')
-	resampledfn = basepath / 'graph' / (Path(request.form["filename"]).stem + '-resampled.png')
-	csvfn       = basepath / 'data'  / (Path(request.form["filename"]).name)
-	htmlfn      = basepath / 'html'  / (Path(request.form["filename"]).stem + '.html')
+	graphfn     = userpath / 'graph' / (Path(request.form["filename"]).stem + '.png')
+	resampledfn = userpath / 'graph' / (Path(request.form["filename"]).stem + '-resampled.png')
+	csvfn       = userpath / 'data'  / (Path(request.form["filename"]).name)
+	htmlfn      = userpath / 'html'  / (Path(request.form["filename"]).stem + '.html')
 
 	print(f'\nWriting graph to: {graphfn}, CSV file to {csvfn} and HTML file to {htmlfn}')
 
@@ -232,7 +256,7 @@ def result():
 	graphfnlink	= Path('..') / Path(*graphfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
 	csvfnlink	= Path('..') / Path(*csvfn.parts[3:])		# remove leading '/app/static' (because our relative path is deeplearning.ge.imati.cnr.it:55564/static/html)
 	print(f'Writing links: {graphfnlink} - {csvfnlink}')
-	template    = open(basepath / 'template.html').read().format(csv_fn=csvfnlink, graph_fn=graphfnlink, pred=predstr)
+	template    = open(Path('/') / basepath / 'template.html').read().format(csv_fn=csvfnlink, graph_fn=graphfnlink, pred=predstr)
 
 	with open(htmlfn, "w") as html_file:
 		html_file.write(template)
