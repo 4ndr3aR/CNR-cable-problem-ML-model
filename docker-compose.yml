@@ -4,7 +4,7 @@ services:
     build:
       context: .
       args:
-        MODEL_REPOSITORY_URI:		# these can be empty, they'll be populated at runtime
+        MODEL_REPOSITORY_URI: # these can be empty, they'll be populated at runtime
         MODEL_PATH:
         MODEL_FILENAME:
         FLASK_PORT:
@@ -12,5 +12,5 @@ services:
     env_file:
       - variables.env
     ports:
-      - "${FLASK_PORT}:${FLASK_PORT}"	# these env variables must be passed "from outside"
-      - "${WEB_PORT}:${WEB_PORT}"	# with sudo docker-compose --env-file variables.env up
+      - "${FLASK_PORT}:${FLASK_PORT}" # these env variables must be passed "from outside"
+      - "${WEB_PORT}:${WEB_PORT}" # with sudo docker-compose --env-file variables.env up
