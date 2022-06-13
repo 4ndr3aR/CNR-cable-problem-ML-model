@@ -1,0 +1,9 @@
+version: "3.3"
+services:
+  ditac:
+    build: .
+    ports:
+      - "55563:55563"
+      - "55564:55564"
+    env_file:
+      - credentials.env
