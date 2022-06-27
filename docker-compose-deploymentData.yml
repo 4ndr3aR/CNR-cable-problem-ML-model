@@ -1,5 +1,18 @@
 version: "3.3"
 services:
+  rclone:
+    image: 4ndr3ar/digitbrain-ditac-cnr-cable-problem-ml-model:firstpublicversion
+    entrypoint: "/bin/sh -c"
+    command: "rclone copy -vv --daemon --dir-cache-time 5s http://deeplearning.ge.imati.cnr.it /ditac/models/ && rclone rcd --rc-web-gui-no-open-browser"
+    volumes:
+      - type: bind
+        source: /data
+        target: /data
+        bind:
+          propagation: rshared
+      - /dev/fuse:/dev/fuse
+      - /config:/config/rclone
+    privileged: true
   ditac:
     build:
       context: .
