@@ -6,8 +6,8 @@ services:
       - MODEL_REPOSITORY_URI=http://deeplearning.ge.imati.cnr.it
       - MODEL_PATH=ditac/models
       - MODEL_FILENAME=ditac-cable-problem-v0.6-endoftraining.pkl
-      - FLASK_PORT= 55563
-      - WEB_PORT= 55564
+      - FLASK_PORT=55563
+      - WEB_PORT=55564
       - EXT_USERNAME=extuser1
       - EXT_PASSWORD=extpassword1
     ports:
